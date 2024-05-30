@@ -1,7 +1,5 @@
 package org.example.qafordevs.tests.service;
 
-import io.qameta.allure.Allure;
-import io.qameta.allure.Step;
 import org.example.qafordevs.entity.DeveloperEntity;
 import org.example.qafordevs.exception.DeveloperDuplicateEmailException;
 import org.example.qafordevs.exception.DeveloperNotFoundException;
@@ -20,8 +18,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 @DisplayName("Developer service implementation tests")
 @ExtendWith(MockitoExtension.class)
@@ -48,6 +45,7 @@ public class DeveloperServiceImplTests {
         DeveloperEntity savedDeveloper = serviceUnderTest.saveDeveloper(developerToCreated);
         //then
         assertThat(savedDeveloper).isNotNull();
+        verify(developerRepository, times(1)).save(developerToCreated);
     }
 
     @Test
@@ -62,6 +60,41 @@ public class DeveloperServiceImplTests {
         assertThrows(
             DeveloperDuplicateEmailException.class,
             () -> serviceUnderTest.saveDeveloper(developerToCreated)
+        );
+        //then
+        verify(developerRepository, never()).save(any(DeveloperEntity.class));
+    }
+
+    @Test
+    @DisplayName("Test update developer functionality")
+    public void givenDeveloperToUpdate_whenUpdateDeveloper_thenRepositoryIsCalled() {
+        //given
+        DeveloperEntity developerToUpdate = EntityGenerator.getDeveloperJohnDoePersisted();
+        BDDMockito
+            .given(developerRepository.existsById(anyInt()))
+            .willReturn(true);
+        BDDMockito
+            .given(developerRepository.save(any(DeveloperEntity.class)))
+            .willReturn(developerToUpdate);
+        //when
+        DeveloperEntity updatedDeveloper = serviceUnderTest.updateDeveloper(developerToUpdate);
+        //then
+        assertThat(updatedDeveloper).isNotNull();
+        verify(developerRepository, times(1)).save(developerToUpdate);
+    }
+
+    @Test
+    @DisplayName("Test update developer with incorrect id functionality")
+    public void givenDeveloperToUpdateWithIncorrectId_whenUpdateDeveloper_thenExceptionIsThrown() {
+        //given
+        DeveloperEntity developerToUpdate = EntityGenerator.getDeveloperJohnDoePersisted();
+        BDDMockito
+            .given(developerRepository.existsById(anyInt()))
+            .willReturn(false);
+        //when
+        assertThrows(
+            DeveloperNotFoundException.class,
+            () -> serviceUnderTest.updateDeveloper(developerToUpdate)
         );
         //then
         verify(developerRepository, never()).save(any(DeveloperEntity.class));
