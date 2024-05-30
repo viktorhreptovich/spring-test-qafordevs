@@ -1,0 +1,129 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.3.0'
+    id 'io.spring.dependency-management' version '1.1.5'
+    id "de.undercouch.download" version "5.6.0"
+    id 'jacoco'
+}
+
+group = 'org.example'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = '21'
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+    agent {
+        canBeResolved = true
+        canBeConsumed = true
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+def allureVersion = '2.25.0'
+def aspectJVersion = '1.9.22'
+
+dependencies {
+    agent "org.aspectj:aspectjweaver:$aspectJVersion"
+
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    compileOnly 'org.projectlombok:lombok'
+    runtimeOnly 'com.h2database:h2'
+    runtimeOnly 'org.postgresql:postgresql'
+    annotationProcessor 'org.projectlombok:lombok'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:postgresql'
+//    testImplementation 'io.qameta.allure:allure-assertj:2.27.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    testImplementation platform("io.qameta.allure:allure-bom:$allureVersion")
+    testImplementation 'io.qameta.allure:allure-junit5'
+
+}
+
+clean {
+    delete 'allure-report'
+    delete 'allure-results'
+    delete 'jacoco-report'
+}
+
+test {
+    useJUnitPlatform()
+    jvmArgs = ["-javaagent:${configurations.agent.singleFile}"]
+    finalizedBy jacocoTestReport
+    finalizedBy 'generate'
+}
+
+jacocoTestReport {
+    dependsOn test
+
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                    '**/entity/**',
+                    '**/dto/**'
+            ])
+        }))
+    }
+
+    reports {
+        xml.required = false
+        csv.required = false
+        html.outputLocation = layout.projectDirectory.dir('jacoco-report')
+    }
+}
+
+task downloadAllure(type: Download) {
+    group "allure"
+    src "https://github.com/allure-framework/allure2/releases/download/2.29.0/allure-2.29.0.zip"
+    dest "$project.projectDir/allure/allure-2.29.0.zip"
+    overwrite false
+}
+
+task unpackAllure(type: Copy, dependsOn: downloadAllure) {
+    group "allure"
+    def zipFile = file("$project.projectDir/allure/allure-2.29.0.zip")
+    def outputDir = file("$project.projectDir/allure")
+
+    from zipTree(zipFile)
+    into outputDir
+}
+
+task generate(type: Exec, dependsOn: unpackAllure) {
+    dependsOn test
+    group "allure"
+    workingDir("$project.projectDir/allure/allure-2.29.0/bin")
+    if (System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('windows')) {
+        commandLine 'cmd', '/c', 'allure', 'generate', "$project.projectDir/allure-results", '-o', "$project.projectDir/allure-report", '--clean'
+    } else {
+        commandLine 'bash', '-c', "./allure generate $project.projectDir/allure-results -o $project.projectDir/allure-report --clean"
+    }
+}
+
+task serve(type: Exec, dependsOn: unpackAllure) {
+    group "allure"
+    workingDir("$project.projectDir/allure/allure-2.29.0/bin")
+    commandLine 'cmd', '/c', 'start', 'allure', 'serve', "$project.projectDir/allure-results"
+    standardOutput = new ByteArrayOutputStream()
+    ignoreExitValue true
+}
+
+task cleanAllureResults(type: Delete) {
+    group "allure"
+    delete "$project.projectDir/allure-results"
+}
+
+task cleanAllureReport(type: Delete) {
+    group "allure"
+    delete "$project.projectDir/allure-report"
+}
