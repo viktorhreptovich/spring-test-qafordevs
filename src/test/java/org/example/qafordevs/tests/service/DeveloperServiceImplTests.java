@@ -14,6 +14,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Optional;
+
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -100,4 +102,59 @@ public class DeveloperServiceImplTests {
         verify(developerRepository, never()).save(any(DeveloperEntity.class));
     }
 
+    @Test
+    @DisplayName("Test get developer by id functionality")
+    public void givenId_whenGetDeveloperById_thenDeveloperIsReturned() {
+        //given
+        BDDMockito
+            .given(developerRepository.findById(anyInt()))
+            .willReturn(Optional.of(EntityGenerator.getDeveloperJohnDoePersisted()));
+        //when
+        DeveloperEntity obtainedDeveloper = serviceUnderTest.getDeveloperById(1);
+        //then
+        assertThat(obtainedDeveloper).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Test get developer by incorrect id functionality")
+    public void givenIncorrectId_whenGetDeveloperById_thenExceptionIsThrown() {
+        //given
+        BDDMockito
+            .given(developerRepository.findById(anyInt()))
+            .willReturn(Optional.empty());
+        //when
+        assertThrows(
+            DeveloperNotFoundException.class,
+            () -> serviceUnderTest.getDeveloperById(1)
+        );
+        //then
+    }
+
+    @Test
+    @DisplayName("Test get developer by email functionality")
+    public void givenEmail_whenGetDeveloperByEmail_thenDeveloperIsReturned() {
+        //given
+        BDDMockito
+            .given(developerRepository.findByEmail(anyString()))
+            .willReturn(EntityGenerator.getDeveloperJohnDoePersisted());
+        //when
+        DeveloperEntity obtainedDeveloper = serviceUnderTest.getDeveloperByEmail("john.doe@mail.com");
+        //then
+        assertThat(obtainedDeveloper).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Test get developer by incorrect email functionality")
+    public void givenIncorrectEmail_whenGetDeveloperByEmail_thenExceptionIsThrown() {
+        //given
+        BDDMockito
+            .given(developerRepository.findByEmail(anyString()))
+            .willReturn(null);
+        //when
+        assertThrows(
+            DeveloperNotFoundException.class,
+            () -> serviceUnderTest.getDeveloperByEmail("john.doe@mail.com")
+        );
+        //then
+    }
 }
