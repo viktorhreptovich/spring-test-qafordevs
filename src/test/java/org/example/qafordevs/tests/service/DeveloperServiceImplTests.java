@@ -14,6 +14,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -21,6 +22,7 @@ import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
+import static org.springframework.util.CollectionUtils.isEmpty;
 
 @DisplayName("Developer service implementation tests")
 @ExtendWith(MockitoExtension.class)
@@ -157,4 +159,44 @@ public class DeveloperServiceImplTests {
         );
         //then
     }
+
+
+
+    @Test
+    @DisplayName("Test get all developers functionality")
+    public void givenThreeDevelopers_whenGetAllDevelopers_thenOnlyActiveDevelopersAreReturned() {
+        //given
+        List<DeveloperEntity> developers = List.of(
+            EntityGenerator.getDeveloperJohnDoePersisted(),
+            EntityGenerator.getDeveloperFrankJonesPersisted(),
+            EntityGenerator.getDeveloperMikeSmithPersisted()
+        );
+        BDDMockito
+            .given(developerRepository.findAll())
+            .willReturn(developers);
+        //when
+        List<DeveloperEntity> obtainedDevelopers = serviceUnderTest.getAllDevelopers();
+        //then
+        assertThat(isEmpty(obtainedDevelopers)).isFalse();
+        assertThat(obtainedDevelopers.size()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("Test get all active by speciality functionality")
+    public void givenThreeDevelopersAndTwoActive_whenGetAllActiveBySpeciality_thenTwoDevelopersAreReturned() {
+        //given
+        List<DeveloperEntity> developers = List.of(
+            EntityGenerator.getDeveloperJohnDoePersisted(),
+            EntityGenerator.getDeveloperMikeSmithPersisted()
+        );
+        BDDMockito
+            .given(developerRepository.findAllActiveBySpeciality(anyString()))
+            .willReturn(developers);
+        //when
+        List<DeveloperEntity> obtainedDevelopers = serviceUnderTest.getAllActiveBySpeciality("Java");
+        //then
+        assertThat(isEmpty(obtainedDevelopers)).isFalse();
+        assertThat(obtainedDevelopers.size()).isEqualTo(2);
+    }
+
 }
