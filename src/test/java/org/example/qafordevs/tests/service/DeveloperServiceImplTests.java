@@ -1,6 +1,7 @@
 package org.example.qafordevs.tests.service;
 
 import org.example.qafordevs.entity.DeveloperEntity;
+import org.example.qafordevs.entity.Status;
 import org.example.qafordevs.exception.DeveloperDuplicateEmailException;
 import org.example.qafordevs.exception.DeveloperNotFoundException;
 import org.example.qafordevs.repository.DeveloperRepository;
@@ -197,6 +198,69 @@ public class DeveloperServiceImplTests {
         //then
         assertThat(isEmpty(obtainedDevelopers)).isFalse();
         assertThat(obtainedDevelopers.size()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("Test deactivate developer by id functionality")
+    public void givenId_whenDeactivateDeveloperById_thenDeveloperIsDeactivatedAndRepositoryIsCalled() {
+        //given
+        DeveloperEntity developer = EntityGenerator.getDeveloperJohnDoePersisted();
+        BDDMockito
+            .given(developerRepository.findById(anyInt()))
+            .willReturn(Optional.of(developer));
+        //when
+        serviceUnderTest.deactivateDeveloperById(1);
+        //then
+        verify(developerRepository, times(1)).save(any(DeveloperEntity.class));
+        assertThat(developer.getStatus()).isEqualTo(Status.DELETED);
+        verify(developerRepository, never()).deleteById(anyInt());
+    }
+
+    @Test
+    @DisplayName("Test deactivate developer with incorrect id functionality")
+    public void givenIncorrectId_whenDeactivateDeveloperById_thenExceptionIsThrown(){
+        //given
+        BDDMockito
+            .given(developerRepository.findById(anyInt()))
+            .willReturn(Optional.empty());
+        //when
+        assertThrows(
+            DeveloperNotFoundException.class,
+            ()-> serviceUnderTest.deactivateDeveloperById(1)
+        );
+        //then
+        verify(developerRepository, never()).save(any(DeveloperEntity.class));
+        verify(developerRepository, never()).deleteById(anyInt());
+    }
+
+    @Test
+    @DisplayName("Test delete developer by id functionality")
+    public void givenId_whenDeleteDeveloperById_thenDeveloperIsDeletedAndRepositoryIsCalled() {
+        //given
+        DeveloperEntity developer = EntityGenerator.getDeveloperJohnDoePersisted();
+        BDDMockito
+            .given(developerRepository.findById(anyInt()))
+            .willReturn(Optional.of(developer));
+        //when
+        serviceUnderTest.deleteDeveloperById(1);
+        //then
+        verify(developerRepository, times(1)).deleteById(anyInt());
+    }
+
+    @Test
+    @DisplayName("Test delete developer with incorrect id functionality")
+    public void givenIncorrectId_whenDeleteDeveloperById_thenExceptionIsThrown(){
+        //given
+        BDDMockito
+            .given(developerRepository.findById(anyInt()))
+            .willReturn(Optional.empty());
+        //when
+        assertThrows(
+            DeveloperNotFoundException.class,
+            ()-> serviceUnderTest.deleteDeveloperById(1)
+        );
+        //then
+        verify(developerRepository, never()).deleteById(anyInt());
     }
 
 }
